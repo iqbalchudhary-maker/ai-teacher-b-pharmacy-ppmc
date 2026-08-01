@@ -393,7 +393,7 @@ export default function StudentDashboard() {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer max-w-27.5 sm:max-w-none"
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer max-w- sm:max-w-none"
               >
                 <option value="Pharmaceutics">Pharmaceutics</option>
                 <option value="Anatomy and Physiology">Anatomy & Physiology</option>
