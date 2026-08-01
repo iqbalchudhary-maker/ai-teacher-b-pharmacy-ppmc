@@ -306,7 +306,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen bg-slate-100 text-left overflow-hidden" dir="ltr">
+    <div className="flex h-dvh w-screen bg-slate-100 text-left overflow-hidden" dir="ltr">
       {/* MOBILE OVERLAY */}
       {isSidebarOpen && (
         <div 
