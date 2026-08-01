@@ -1,85 +1,24 @@
-// components/TestCard.tsx
-"use client";
+import { Sparkles } from "lucide-react";
 
-import { useState } from "react";
-
-interface Option {
-  id: string; // "A", "B", "C", "D"
-  text: string;
+interface TestCardProps {
+  selectedSubject: string;
 }
 
-interface QuestionProps {
-  id: number;
-  question: string;
-  options: Option[];
-  correctOption?: string;
-  explanation?: string;
-}
-
-export default function TestCard({
-  id,
-  question,
-  options,
-  correctOption,
-  explanation,
-}: QuestionProps) {
-  const [selected, setSelected] = useState<string | null>(null);
-  const [showResult, setShowResult] = useState(false);
-
-  const handleOptionClick = (optionId: string) => {
-    setSelected(optionId);
-    setShowResult(true);
-  };
-
+export default function TestCard({ selectedSubject }: TestCardProps) {
   return (
-    <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm my-4 dir-rtl text-right">
-      <div className="flex items-center gap-2 mb-3">
-        <span className="bg-blue-100 text-blue-900 font-bold text-xs px-2.5 py-1 rounded-md">
-          سوال {id}
-        </span>
-        <h3 className="font-semibold text-gray-800 text-sm leading-relaxed">
-          {question}
-        </h3>
-      </div>
-
-      <div className="space-y-2 mt-4">
-        {options.map((option) => {
-          let btnStyle = "bg-gray-50 border-gray-200 text-gray-700 hover:bg-blue-50 hover:border-blue-300";
-
-          if (showResult && correctOption) {
-            if (option.id === correctOption) {
-              btnStyle = "bg-green-100 border-green-500 text-green-900 font-bold";
-            } else if (option.id === selected) {
-              btnStyle = "bg-red-100 border-red-500 text-red-900 font-bold";
-            }
-          }
-
-          return (
-            <button
-              key={option.id}
-              onClick={() => handleOptionClick(option.id)}
-              className={`w-full text-right p-3 rounded-lg text-xs border transition flex items-center justify-between ${btnStyle}`}
-            >
-              <span>
-                <strong className="ml-2 font-bold">{option.id}.</strong> {option.text}
-              </span>
-              {showResult && option.id === correctOption && (
-                <span className="text-green-600 font-bold text-sm">✓ صحیح</span>
-              )}
-              {showResult && option.id === selected && option.id !== correctOption && (
-                <span className="text-red-600 font-bold text-sm">✗ غلط</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {showResult && explanation && (
-        <div className="mt-4 p-3 bg-blue-50 border-r-4 border-blue-500 text-blue-900 text-xs rounded-l-md leading-relaxed">
-          <strong className="block mb-1">استاد کی وضاحت:</strong>
-          {explanation}
+    <div className="bg-gradient-to-r from-indigo-900/40 via-slate-800/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-3 md:p-4 flex items-center justify-between shadow-md">
+      <div className="flex items-center space-x-3">
+        <div className="p-2 bg-indigo-600/20 border border-indigo-500/30 rounded-xl text-indigo-400">
+          <Sparkles className="h-5 w-5" />
         </div>
-      )}
+        <div>
+          <h2 className="text-xs md:text-sm font-bold text-white">Active Subject Hub: {selectedSubject}</h2>
+          <p className="text-xs text-slate-400">Ask for MCQs, Short, or Long questions anytime.</p>
+        </div>
+      </div>
+      <span className="hidden sm:inline-block text-xs bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-full font-medium">
+        PPMC Official AI
+      </span>
     </div>
   );
 }

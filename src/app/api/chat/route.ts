@@ -88,13 +88,14 @@ Text to translate:
       return NextResponse.json({ reply: collegeInfoReply, text: collegeInfoReply });
     }
 
-    // 2. ڈیٹا بیس سے کتاب کا کنٹیکسٹ فیچ کرنا
+    // 2. ایکٹیو سبجیکٹ اور ڈیٹا بیس سے کتاب کا کنٹیکسٹ فیچ کرنا
+    const activeSubject = subject || "Pharmaceutics";
     let bookContext = "";
     try {
       const docModel = prismaClient.document || prismaClient.book || prismaClient.pdf;
       if (docModel) {
         const documents = await docModel.findMany({
-          where: { subject: subject },
+          where: { subject: activeSubject },
           take: 5,
         });
 
@@ -108,25 +109,34 @@ Text to translate:
       console.log("Database fetch skipped or empty context.");
     }
 
-    // 3. انسانی استاد اور سخت ایگزامینر کا سسٹم پرامپٹ (Human-like Conceptual Examiner & Teacher)
+    // 3. سخت اور درست سبجیکٹ بائنڈنگ اور کویسچن ٹائپ (MCQs/Short/Long) والا سسٹم پرامپٹ
     const systemPrompt = `
 You are the Official AI Professor & Senior Pharmacy Educator for "Pak Paramedical College Chiniot" teaching B-Pharmacy students. 
 
+CRITICAL ACADEMIC RULE REGARDING SUBJECT BOUNDARY:
+- The currently active subject selected by the student on the dashboard is: **${activeSubject}**.
+- You MUST answer questions, generate MCQs, short questions, long questions, quizzes, and explain topics **ONLY** from **${activeSubject}**. 
+- Do NOT confuse it with any other subject. Every response must strictly revolve around **${activeSubject}**.
+
+STRICT RULES FOR QUESTION TYPES (MCQs vs SHORT vs LONG):
+1. **MCQs (Multiple Choice Questions)**: When the student asks for MCQs, generate structured objective questions with options A, B, C, and D, along with the correct answer key at the end.
+2. **Short Questions (Short/2-Mark Questions)**: When the student asks for short questions, do NOT send MCQs. Instead, provide crisp, direct, and focused short conceptual questions (typical 2-mark board exam style) along with brief model answers.
+3. **Long Questions (Long/Essay/10-Mark Questions)**: When the student asks for long questions, do NOT send MCQs. Instead, provide comprehensive, detailed, and structured essay-type questions (typical 10-mark board exam style) with proper headings, sub-topics, and detailed explanations.
+
 YOUR PERSONA & TEACHING STYLE:
 - Act like a warm, experienced, highly engaging human college professor standing in a real physical classroom. 
-- Talk naturally, encourage students, and build an interactive relationship. When a student finishes a topic, surprise them with a quick conceptual viva question.
+- Talk naturally, encourage students, and build an interactive relationship.
 
 STRICT ACADEMIC & EXAMINATION RULES:
-1. **SCOPE & BOUNDARIES**: You are strictly an AI Professor for the 4 core B-Pharmacy subjects: Anatomy and Physiology, Microbiology, Pharmaceutics, and Biochemistry. If a student asks unrelated general knowledge outside the syllabus, politely decline in Urdu: "میں پاک پیرامیڈیکل کالج چنیوٹ کا AI ٹیچر ہوں۔ میں صرف آپ کے بی فارمیسی کے منتخب کردہ سبجیکٹ، چیپٹر اور کالج سے متعلق معلومات کے لیے بنایا گیا ہوں۔ برائے مہربانی اپنی کتاب سے متعلق سوال پوچھیں۔"
+1. **SCOPE & BOUNDARIES**: You are strictly an AI Professor for the core B-Pharmacy subjects. If a student asks unrelated general knowledge outside the syllabus, politely decline in Urdu: "میں پاک پیرامیڈیکل کالج چنیوٹ کا AI ٹیچر ہوں۔ میں صرف آپ کے بی فارمیسی کے منتخب کردہ سبجیکٹ، چیپٹر اور کالج سے متعلق معلومات کے لیے بنایا گیا ہوں۔ برائے مہربانی اپنی کتاب سے متعلق سوال پوچھیں۔"
 2. **LANGUAGE**: Respond strictly in clear, professional, and accessible **ENGLISH ONLY** for your primary lectures, questions, and evaluations. Do not mix Urdu inside your main lecture.
-3. **CONCEPTUAL EXAMS & QUESTION PAPERS**: When a student requests test papers, MCQs, or quizzes, **60% of the questions MUST be conceptual and clinical/applied**, rather than direct rote memorization from the book. Generate clean structured formats (e.g., Q1:, A), B), C), D)).
-4. **PAPER & ANSWER EVALUATION (GRADING)**: If a student submits their test answers (e.g. "1. A, 2. B...") or shares an image/text of their attempted paper, carefully evaluate every single answer, calculate their total marks and percentage (%), display a professional scorecard, and provide constructive academic feedback pointing out why correct answers are right and where they made mistakes.
+3. **PAPER & ANSWER EVALUATION (GRADING)**: If a student submits their test answers or shares an image/text of their attempted paper, carefully evaluate every single answer, calculate their total marks and percentage (%), display a professional scorecard, and provide constructive academic feedback.
 
 SUBJECT CONTEXT:
-- Selected Subject: **${subject}**
+- Selected Subject: **${activeSubject}**
 - Reference Textbook Context:
 ---
-${bookContext ? bookContext.substring(0, 4000) : "Use official B-Pharmacy Punjab Pharmacy Council syllabus standards."}
+${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab Pharmacy Council syllabus standards specifically for ${activeSubject}.`}
 ---
 `;
 
@@ -151,7 +161,7 @@ ${bookContext ? bookContext.substring(0, 4000) : "Use official B-Pharmacy Punjab
           const newChat = await prismaClient.chat.create({
             data: {
               title: title ? title.substring(0, 30) + "..." : (message ? message.substring(0, 30) + "..." : "Student Paper Evaluation"),
-              subject: subject || "Pharmaceutics",
+              subject: activeSubject,
               studentId: currentStudentId,
             },
           });
@@ -165,7 +175,7 @@ ${bookContext ? bookContext.substring(0, 4000) : "Use official B-Pharmacy Punjab
               data: {
                 id: activeChatId,
                 title: message ? message.substring(0, 30) + "..." : "Student Session",
-                subject: subject || "Pharmaceutics",
+                subject: activeSubject,
                 studentId: currentStudentId,
               },
             });

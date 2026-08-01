@@ -1,67 +1,49 @@
-// components/Header.tsx
-"use client";
+import { Menu, BookOpen } from "lucide-react";
 
 interface HeaderProps {
-  subject: string;
-  setSubject: (sub: string) => void;
-  chapter: string;
-  setChapter: (chap: string) => void;
-  onLogout?: () => void;
+  selectedSubject: string;
+  setSelectedSubject: (sub: string) => void;
+  onToggleSidebar: () => void;
 }
 
-export default function Header({
-  subject,
-  setSubject,
-  chapter,
-  setChapter,
-  onLogout,
-}: HeaderProps) {
+export default function Header({ selectedSubject, setSelectedSubject, onToggleSidebar }: HeaderProps) {
+  const subjects = [
+    "Pharmaceutics",
+    "Pharmacology",
+    "Pharmaceutical Chemistry",
+    "Pharmacognosy",
+    "Anatomy & Physiology",
+    "Community Pharmacy"
+  ];
+
   return (
-    <header className="border-b border-gray-200 bg-white p-4 flex flex-wrap items-center justify-between gap-4 shadow-sm dir-rtl">
-      {/* College Branding */}
-      <div className="flex items-center gap-3">
-        <div className="bg-blue-900 text-white w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shadow">
-          P
-        </div>
+    <header className="h-16 border-b border-slate-800 bg-slate-950/50 backdrop-blur px-4 flex items-center justify-between shrink-0">
+      <div className="flex items-center space-x-3">
+        <button
+          onClick={onToggleSidebar}
+          className="md:hidden text-slate-300 hover:text-white p-1.5 rounded-lg bg-slate-800/50"
+        >
+          <Menu className="h-6 w-6" />
+        </button>
         <div>
-          <h1 className="font-bold text-blue-900 text-base leading-tight">
-            پاک پیرامیڈیکل کالج، چنیوٹ
-          </h1>
-          <p className="text-[11px] text-gray-500">
-            Director: Tayyab Raza Qazi | Helpline: 03337703379
-          </p>
+          <h1 className="font-bold text-sm md:text-base text-white">Pak Paramedical College, Chiniot</h1>
+          <p className="text-xs text-slate-400 hidden sm:block">B-Pharmacy AI Learning Portal</p>
         </div>
       </div>
 
-      {/* Subject & Chapter Selectors + Logout */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center space-x-2 bg-slate-900 border border-slate-700/60 rounded-xl px-3 py-1.5 shadow-inner">
+        <BookOpen className="h-4 w-4 text-indigo-400 shrink-0" />
         <select
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className="text-xs p-2.5 border border-gray-300 rounded-lg bg-gray-50 font-semibold outline-none focus:ring-2 focus:ring-blue-500"
+          value={selectedSubject}
+          onChange={(e) => setSelectedSubject(e.target.value)}
+          className="bg-transparent text-xs md:text-sm text-slate-200 focus:outline-none cursor-pointer"
         >
-          <option value="Pharmaceutics">Pharmaceutics</option>
-          <option value="Anatomy and Physiology">Anatomy & Physiology</option>
-          <option value="Microbiology">Microbiology</option>
-          <option value="Biochemistry">Biochemistry</option>
+          {subjects.map((sub) => (
+            <option key={sub} value={sub} className="bg-slate-900 text-white">
+              {sub}
+            </option>
+          ))}
         </select>
-
-        <input
-          type="text"
-          value={chapter}
-          onChange={(e) => setChapter(e.target.value)}
-          placeholder="e.g., Chapter 1"
-          className="text-xs p-2.5 border border-gray-300 rounded-lg bg-gray-50 w-32 font-semibold outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        {onLogout && (
-          <button
-            onClick={onLogout}
-            className="text-xs text-red-600 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg font-bold transition"
-          >
-            لاگ آؤٹ
-          </button>
-        )}
       </div>
     </header>
   );

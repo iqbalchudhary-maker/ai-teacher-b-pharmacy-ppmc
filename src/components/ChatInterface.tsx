@@ -1,132 +1,112 @@
-// components/ChatInterface.tsx
-"use client";
-
-import { useState } from "react";
+import { Send, FileText, Sparkles } from "lucide-react";
+import { FormEvent, ChangeEvent, RefObject } from "react";
 
 interface Message {
+  id?: string;
   role: "user" | "assistant";
-  content: string;
-  imageUrl?: string;
+  text: string;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
-  onSendMessage: (text: string, imageUrl?: string) => void;
   loading: boolean;
+  inputMessage: string;
+  setInputMessage: (msg: string) => void;
+  handleSendMessage: (e?: FormEvent) => void;
+  handleImageUpload: (e: ChangeEvent<HTMLInputElement>) => void;
+  selectedImage: string | null;
+  setSelectedImage: (img: string | null) => void;
+  messagesEndRef: RefObject<HTMLDivElement | null>;
+  selectedSubject: string;
 }
 
 export default function ChatInterface({
   messages,
-  onSendMessage,
   loading,
+  inputMessage,
+  setInputMessage,
+  handleSendMessage,
+  handleImageUpload,
+  selectedImage,
+  setSelectedImage,
+  messagesEndRef,
+  selectedSubject
 }: ChatInterfaceProps) {
-  const [input, setInput] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() && !imagePreview) return;
-
-    onSendMessage(input, imagePreview || undefined);
-    setInput("");
-    setImagePreview(null);
-  };
-
   return (
-    <div className="flex-1 flex flex-col h-full bg-white dir-rtl">
-      {/* Message Stream */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      
+      {/* Messages Scroll Area */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}
+            className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`max-w-2xl rounded-2xl p-4 text-sm leading-relaxed shadow-xs ${
+              className={`max-w-[90%] md:max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-md ${
                 msg.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-gray-100 text-gray-800 rounded-bl-none border border-gray-200"
+                  ? "bg-indigo-600 text-white rounded-br-none"
+                  : "bg-slate-800/90 border border-slate-700/60 text-slate-100 rounded-bl-none whitespace-pre-wrap"
               }`}
             >
-              {msg.imageUrl && (
-                <img
-                  src={msg.imageUrl}
-                  alt="Paper Upload"
-                  className="max-h-56 rounded-lg mb-3 border border-gray-300 object-cover"
-                />
-              )}
-              <div className="whitespace-pre-wrap">{msg.content}</div>
+              {msg.text}
             </div>
           </div>
         ))}
 
         {loading && (
-          <div className="flex justify-end">
-            <div className="bg-gray-100 border border-gray-200 text-gray-600 rounded-2xl p-3 text-xs animate-pulse flex items-center gap-2">
-              <span>استاد جواب اور ٹیسٹ تیار کر رہے ہیں...</span>
+          <div className="flex justify-start">
+            <div className="bg-slate-800/90 border border-slate-700/60 text-slate-300 rounded-2xl rounded-bl-none px-4 py-3 text-sm flex items-center space-x-2 animate-pulse">
+              <Sparkles className="h-4 w-4 text-indigo-400 animate-spin" />
+              <span>AI Professor is typing response...</span>
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Image Preview Area */}
-      {imagePreview && (
-        <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src={imagePreview} alt="Preview" className="h-12 w-12 object-cover rounded-md border" />
-            <span className="text-xs text-gray-600">پیپر / ٹیسٹ کی تصویر منسلک ہے</span>
+      {/* Image Preview */}
+      {selectedImage && (
+        <div className="px-4 py-2 bg-slate-950 border-t border-slate-800 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <img src={selectedImage} alt="Preview" className="h-10 w-10 object-cover rounded-lg border border-slate-700" />
+            <span className="text-xs text-slate-300">Image attached for evaluation</span>
           </div>
-          <button
-            onClick={() => setImagePreview(null)}
-            className="text-xs text-red-500 font-bold hover:underline"
+          <button 
+            onClick={() => setSelectedImage(null)}
+            className="text-red-400 hover:text-red-300 text-xs font-semibold px-2 py-1"
           >
-            ختم کریں ✕
+            Remove
           </button>
         </div>
       )}
 
-      {/* Input Box & Paper Upload Button */}
-      <div className="p-4 border-t border-gray-200 bg-white">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex items-center gap-2">
-          {/* File Upload Icon/Button */}
-          <label className="cursor-pointer bg-gray-100 hover:bg-gray-200 text-gray-600 p-3 rounded-xl border border-gray-300 transition flex items-center justify-center">
-            📸
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleImageUpload}
-            />
+      {/* Input Footer */}
+      <div className="p-3 md:p-4 bg-slate-950 border-t border-slate-800 shrink-0">
+        <form onSubmit={handleSendMessage} className="flex items-center space-x-2 max-w-4xl mx-auto">
+          <label className="cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 p-2.5 rounded-xl transition flex items-center justify-center shrink-0">
+            <FileText className="h-5 w-5" />
+            <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
           </label>
 
           <input
             type="text"
-            placeholder="سوال پوچھیں، 50 MCQs کا ٹیسٹ بنوائیں يا پیپر چیک کروائیں..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            className="flex-1 border border-gray-300 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={inputMessage}
+            onChange={(e) => setInputMessage(e.target.value)}
+            placeholder={`Ask ${selectedSubject} question, or type 'give me MCQs / Short / Long questions'...`}
+            className="flex-1 bg-slate-900 border border-slate-700/70 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition"
           />
 
           <button
             type="submit"
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold text-sm transition shadow disabled:opacity-50"
+            disabled={loading || (!inputMessage.trim() && !selectedImage)}
+            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-medium p-2.5 rounded-xl transition flex items-center justify-center shrink-0 shadow-lg shadow-indigo-600/20"
           >
-            ارسال
+            <Send className="h-5 w-5" />
           </button>
         </form>
       </div>
+
     </div>
   );
 }

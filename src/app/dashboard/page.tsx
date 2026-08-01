@@ -1,4 +1,3 @@
-// src/app/dashboard/page.tsx
 "use client";
 
 import { useState, useEffect, useRef } from "react";
@@ -25,13 +24,16 @@ export default function StudentDashboard() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   
+  // Mobile Sidebar State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Student Identification
   const [studentId, setStudentId] = useState("student_chiniot_01");
 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "Welcome to Pak Paramedical College Chiniot! I am your AI Professor. Which chapter or topic of Pharmaceutics would you like to cover today?",
+      text: "Welcome to Pak Paramedical College Chiniot! I am your AI Professor. Which chapter or topic would you like to cover today?",
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
@@ -73,6 +75,7 @@ export default function StudentDashboard() {
   // 2. Loading messages for a previous session
   const loadSession = async (session: ChatSession) => {
     setCurrentSessionId(session.id);
+    setIsSidebarOpen(false); // Mobile پر سیشن سلیکٹ ہونے پر سائیڈ بار بند ہو جائے
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -97,6 +100,7 @@ export default function StudentDashboard() {
 
   const startNewChat = () => {
     setCurrentSessionId(null);
+    setIsSidebarOpen(false);
     setMessages([
       {
         role: "assistant",
@@ -302,15 +306,35 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-left" dir="ltr">
-      {/* LEFT SIDEBAR FOR CHAT HISTORY */}
-      <aside className="w-64 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0">
-        <div className="p-4 border-b border-slate-800">
+    <div className="flex h-screen bg-slate-50 text-left overflow-hidden" dir="ltr">
+      {/* MOBILE OVERLAY */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm"
+        />
+      )}
+
+      {/* LEFT SIDEBAR FOR CHAT HISTORY (Responsive) */}
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-40
+        w-72 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <button
             onClick={startNewChat}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 rounded-xl transition shadow cursor-pointer flex items-center justify-center gap-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow cursor-pointer flex items-center justify-center gap-2"
           >
             ➕ New Chat Session
+          </button>
+          {/* Close button for mobile inside sidebar */}
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden ml-2 text-slate-400 hover:text-white p-1 font-bold text-lg"
+          >
+            ✕
           </button>
         </div>
 
@@ -343,25 +367,35 @@ export default function StudentDashboard() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden">
-        {/* TOP HEADER - Strictly Left to Right */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4 shadow-xs">
-          <div className="flex flex-col text-left">
-            <h1 className="text-base font-bold text-slate-800">
-              Pak Paramedical College, Chiniot
-            </h1>
-            <p className="text-[11px] text-slate-500 font-medium">
-              B-Pharmacy AI Learning Portal
-            </p>
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full">
+        {/* TOP HEADER */}
+        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-2 shadow-xs shrink-0">
+          <div className="flex items-center gap-3">
+            {/* Hamburger Menu Button for Mobile */}
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition font-bold"
+            >
+              ☰
+            </button>
+            
+            <div className="flex flex-col text-left">
+              <h1 className="text-sm md:text-base font-bold text-slate-800 truncate">
+                Pak Paramedical College, Chiniot
+              </h1>
+              <p className="text-[10px] md:text-[11px] text-slate-500 font-medium">
+                B-Pharmacy AI Learning Portal
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <span className="text-xs font-semibold text-slate-600">📚 Subject:</span>
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-semibold text-slate-600 hidden sm:inline">📚 Subject:</span>
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer max-w-[110px] sm:max-w-none"
               >
                 <option value="Pharmaceutics">Pharmaceutics</option>
                 <option value="Anatomy and Physiology">Anatomy & Physiology</option>
@@ -373,15 +407,15 @@ export default function StudentDashboard() {
 
             <button
               onClick={handleLogout}
-              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-3 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
+              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
             >
-              🚪 Logout
+              🚪 <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>
 
         {/* CHAT MESSAGES AREA */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
           {messages.map((msg, index) => (
             <div
               key={index}
@@ -390,13 +424,13 @@ export default function StudentDashboard() {
               }`}
             >
               <div
-                className={`max-w-[90%] md:max-w-[80%] rounded-2xl p-5 text-sm shadow-sm ${
+                className={`max-w-[95%] md:max-w-[80%] rounded-2xl p-4 md:p-5 text-sm shadow-sm ${
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-br-none font-normal text-left"
                     : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
                 }`}
               >
-                {/* Assistant Message Custom Formatting & LTR Typography */}
+                {/* Assistant Message Custom Formatting */}
                 {msg.role === "assistant" ? (
                   <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
                     {msg.text.split("\n").map((line, lineIdx) => {
@@ -420,16 +454,16 @@ export default function StudentDashboard() {
                     })}
                   </div>
                 ) : (
-                  <div className="whitespace-pre-wrap leading-relaxed font-sans text-left">
+                  <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
                     {msg.text}
                   </div>
                 )}
 
-                {/* Urdu Translation Box (RTL only inside this specific box) */}
+                {/* Urdu Translation Box */}
                 {msg.translatedText && (
-                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/80 p-4 rounded-xl text-slate-900 font-medium text-sm leading-loose shadow-inner" dir="rtl">
+                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/80 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-loose shadow-inner" dir="rtl">
                     <span className="text-blue-700 font-bold block mb-2 text-xs tracking-wide text-left" dir="ltr">🌐 Urdu Translation:</span>
-                    <div className="font-urdu text-right text-slate-800" style={{ fontFamily: "Jameel Noori Nastaleeq, Noto Nastaliq Urdu, sans-serif" }}>
+                    <div className="font-urdu text-right text-slate-800 text-xs md:text-sm" style={{ fontFamily: "Jameel Noori Nastaleeq, Noto Nastaliq Urdu, sans-serif" }}>
                       {msg.translatedText}
                     </div>
                   </div>
@@ -467,33 +501,33 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* CHAT INPUT AREA - Standard LTR */}
-        <div className="bg-white border-t border-slate-200 p-4">
+        {/* CHAT INPUT AREA */}
+        <div className="bg-white border-t border-slate-200 p-3 md:p-4 shrink-0">
           <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex items-center gap-2">
             <button
               type="button"
               onClick={toggleListening}
-              className={`p-3 rounded-xl border font-bold text-sm transition flex items-center justify-center cursor-pointer ${
+              className={`p-2.5 md:p-3 rounded-xl border font-bold text-sm transition flex items-center justify-center cursor-pointer ${
                 isListening
                   ? "bg-red-600 text-white animate-bounce border-red-600"
                   : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
               }`}
             >
-              {isListening ? "🔴 Listening..." : "🎙️"}
+              {isListening ? "🔴" : "🎙️"}
             </button>
 
             <input
               type="text"
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
-              placeholder="Type your question or click mic to speak..."
-              className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-4 py-3 text-xs md:text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-left"
+              placeholder="Type your question or click mic..."
+              className="flex-1 bg-slate-100 border border-slate-200 rounded-xl px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm text-slate-800 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-left"
             />
 
             <button
               type="submit"
               disabled={loading || !inputMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs px-6 py-3 rounded-xl transition shadow-xs cursor-pointer"
+            className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs px-4 md:px-6 py-2.5 md:py-3 rounded-xl transition shadow-xs cursor-pointer"
             >
               Send
             </button>
