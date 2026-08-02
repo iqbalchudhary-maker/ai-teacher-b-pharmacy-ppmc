@@ -46,17 +46,6 @@ export default function StudentDashboard() {
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
 
-  // Auto-scroll ref and effect added
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, loading]);
-
   // 1. Fetching chat history for the logged-in student from Neon DB
   useEffect(() => {
     const fetchStudentSessions = async () => {
@@ -86,7 +75,7 @@ export default function StudentDashboard() {
   // 2. Loading messages for a previous session
   const loadSession = async (session: ChatSession) => {
     setCurrentSessionId(session.id);
-    setIsSidebarOpen(false); // Mobile پر سیشن سلیکٹ ہونے پر سائیڈ بار بند ہو جائے
+    setIsSidebarOpen(false);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -202,7 +191,7 @@ export default function StudentDashboard() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // 100% Stable Manual Translation Handler
+  // Manual Translation Handler
   const handleToggleTranslateMessage = async (index: number) => {
     const targetMsg = messages[index];
 
@@ -317,7 +306,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="absolute inset-0 flex flex-col h-full w-full bg-slate-100 text-left overflow-hidden" dir="ltr">
+    <div className="flex h-dvh w-screen bg-slate-100 text-left overflow-hidden" dir="ltr">
       {/* MOBILE OVERLAY */}
       {isSidebarOpen && (
         <div 
@@ -326,224 +315,219 @@ export default function StudentDashboard() {
         />
       )}
 
-      {/* TOP HEADER */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between gap-2 shadow-xs shrink-0 z-20">
-        <div className="flex items-center gap-3">
+      {/* LEFT SIDEBAR FOR CHAT HISTORY */}
+      <aside className={`
+        fixed md:static inset-y-0 left-0 z-40
+        w-72 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0
+        transform transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
+        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition font-bold"
+            onClick={startNewChat}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow cursor-pointer flex items-center justify-center gap-2"
           >
-            ☰
+            ➕ New Chat Session
           </button>
-          
-          <div className="flex flex-col text-left">
-            <h1 className="text-sm font-bold text-slate-800 truncate">
-              Pak Paramedical College, Chiniot
-            </h1>
-            <p className="text-[10px] text-slate-500 font-medium">
-              B-Pharmacy AI Learning Portal
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-            <span className="text-xs font-semibold text-slate-500 hidden sm:inline">Subject:</span>
-            <select
-              value={selectedSubject}
-              onChange={(e) => setSelectedSubject(e.target.value)}
-              className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
-            >
-              <option value="Pharmaceutics">Pharmaceutics</option>
-              <option value="Anatomy and Physiology">Anatomy & Physiology</option>
-              <option value="Microbiology">Microbiology</option>
-              <option value="Biochemistry">Biochemistry</option>
-              <option value="Pharmacognosy">Pharmacognosy</option>
-            </select>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-3 py-2 rounded-xl transition cursor-pointer flex items-center gap-1"
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="md:hidden ml-2 text-slate-400 hover:text-white p-1 font-bold text-lg"
           >
-            <span>🚪</span>
-            <span className="hidden sm:inline">Logout</span>
+            ✕
           </button>
         </div>
-      </header>
 
-      {/* BODY WRAPPER (SIDEBAR + CHAT AREA) */}
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* LEFT SIDEBAR FOR CHAT HISTORY */}
-        <aside className={`
-          fixed md:static inset-y-0 left-0 z-40
-          w-72 bg-slate-900 text-white flex flex-col border-r border-slate-800 shrink-0
-          transform transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
-        `}>
-          <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div className="flex-1 p-3 space-y-2 overflow-y-auto text-xs">
+          <div className="text-slate-400 font-semibold mb-2 px-2 text-[11px] uppercase tracking-wider">
+            Your Previous Lectures
+          </div>
+          {sessions.length === 0 ? (
+            <div className="text-slate-500 italic px-2 text-[11px]">No saved chats yet.</div>
+          ) : (
+            sessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => loadSession(session)}
+                className={`w-full text-left p-2.5 rounded-lg text-xs truncate transition cursor-pointer flex items-center justify-between ${
+                  currentSessionId === session.id
+                    ? "bg-slate-800 text-blue-400 font-semibold border border-slate-700"
+                    : "text-slate-300 hover:bg-slate-800/60"
+                }`}
+              >
+                <span className="truncate">💬 {session.title}</span>
+              </button>
+            ))
+          )}
+        </div>
+
+        <div className="p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center">
+          Pak PPMC Chiniot | SM Tech AI
+        </div>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden w-full bg-slate-50">
+        {/* TOP HEADER */}
+        <header className="bg-white border-b border-slate-200 px-4 md:px-6 py-3.5 flex items-center justify-between gap-2 shadow-xs shrink-0 z-10">
+          <div className="flex items-center gap-3">
             <button
-              onClick={startNewChat}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2.5 px-3 rounded-xl transition shadow cursor-pointer flex items-center justify-center gap-2"
+              onClick={() => setIsSidebarOpen(true)}
+              className="md:hidden p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition font-bold"
             >
-              ➕ New Chat Session
+              ☰
             </button>
-            <button 
-              onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden ml-2 text-slate-400 hover:text-white p-1 font-bold text-lg"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="flex-1 p-3 space-y-2 overflow-y-auto text-xs">
-            <div className="text-slate-400 font-semibold mb-2 px-2 text-[11px] uppercase tracking-wider">
-              Your Previous Lectures
-            </div>
-            {sessions.length === 0 ? (
-              <div className="text-slate-500 italic px-2 text-[11px]">No saved chats yet.</div>
-            ) : (
-              sessions.map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => loadSession(session)}
-                  className={`w-full text-left p-2.5 rounded-lg text-xs truncate transition cursor-pointer flex items-center justify-between ${
-                    currentSessionId === session.id
-                      ? "bg-slate-800 text-blue-400 font-semibold border border-slate-700"
-                      : "text-slate-300 hover:bg-slate-800/60"
-                  }`}
-                >
-                  <span className="truncate">💬 {session.title}</span>
-                </button>
-              ))
-            )}
-          </div>
-
-          <div className="p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center">
-            Pak Paramedical College Chiniot | SM Tech AI
-          </div>
-        </aside>
-
-        {/* MAIN CHAT & INPUT SECTION */}
-        <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
-          {/* CHAT MESSAGES AREA */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex flex-col ${
-                  msg.role === "user" ? "items-end" : "items-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[95%] md:max-w-[80%] rounded-2xl p-4 text-sm shadow-sm ${
-                    msg.role === "user"
-                      ? "bg-blue-600 text-white rounded-br-none text-left"
-                      : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
-                  }`}
-                >
-                  {msg.role === "assistant" ? (
-                    <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
-                      {msg.text.split("\n").map((line, lineIdx) => {
-                        const trimmed = line.trim();
-                        if (!trimmed) return null;
-                        const isHeading = trimmed.startsWith("**") || trimmed.startsWith("1.") || trimmed.startsWith("-") || trimmed.endsWith(":");
-
-                        return (
-                          <div
-                            key={lineIdx}
-                            className={`${
-                              isHeading
-                                ? "font-bold text-blue-900 text-sm mt-3 border-l-4 border-blue-600 pl-3 bg-blue-50/50 py-1 rounded-r-lg text-left"
-                                : "text-slate-700 text-xs md:text-sm pl-1 text-left"
-                            }`}
-                          >
-                            {trimmed.replace(/\*\*/g, "")}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
-                      {msg.text}
-                    </div>
-                  )}
-
-                  {msg.translatedText && (
-                    <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 rounded-xl text-slate-900 font-medium text-sm leading-loose shadow-inner" dir="rtl">
-                      <span className="text-blue-700 font-bold block mb-2 text-xs tracking-wide text-left" dir="ltr">🌐 Urdu Translation:</span>
-                      <div className="font-urdu text-right text-slate-800 text-xs md:text-sm" style={{ fontFamily: "Jameel Noori Nastaleeq, Noto Nastaliq Urdu, sans-serif" }}>
-                        {msg.translatedText}
-                      </div>
-                    </div>
-                  )}
-
-                  {msg.role === "assistant" && (
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-4 text-xs">
-                      <button
-                        onClick={() => speakText(msg.text, index)}
-                        className="flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
-                      >
-                        {isSpeaking === index ? "⏹️ Stop" : "🔊 Listen"}
-                      </button>
-
-                      <button
-                        onClick={() => handleToggleTranslateMessage(index)}
-                        disabled={msg.isTranslating}
-                        className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold cursor-pointer transition bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
-                      >
-                        🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Urdu" : "Show Urdu"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            {loading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-slate-200 rounded-2xl p-3 text-xs font-semibold text-slate-500 animate-pulse shadow-xs">
-                  AI Professor is generating lecture...
-                </div>
-              </div>
-            )}
             
-            {/* Scroll End Reference Added */}
-            <div ref={messagesEndRef} />
+            <div className="flex flex-col text-left">
+              <h1 className="text-sm md:text-base font-bold text-slate-800 truncate">
+                Pak Paramedical College, Chiniot
+              </h1>
+              <p className="text-[10px] md:text-[11px] text-slate-500 font-medium">
+                B-Pharmacy AI Learning Portal
+              </p>
+            </div>
           </div>
 
-          {/* CHAT INPUT AREA (Fixed at bottom inside flex) */}
-          <div className="bg-white border-t border-slate-300 p-3 shrink-0 shadow-lg">
-            <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleListening}
-                className={`p-2.5 rounded-xl border font-bold text-sm transition flex items-center justify-center cursor-pointer shrink-0 ${
-                  isListening
-                    ? "bg-red-600 text-white animate-bounce border-red-600"
-                    : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="flex items-center gap-1.5 bg-slate-100 px-2.5 py-1.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-semibold text-slate-600 hidden sm:inline">📚 Subject:</span>
+              <select
+                value={selectedSubject}
+                onChange={(e) => setSelectedSubject(e.target.value)}
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer max-w- sm:max-w-none"
+              >
+                <option value="Pharmaceutics">Pharmaceutics</option>
+                <option value="Anatomy and Physiology">Anatomy & Physiology</option>
+                <option value="Microbiology">Microbiology</option>
+                <option value="Biochemistry">Biochemistry</option>
+                <option value="Pharmacognosy">Pharmacognosy</option>
+              </select>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold text-xs px-2.5 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
+            >
+              🚪 <span className="hidden sm:inline">Logout</span>
+            </button>
+          </div>
+        </header>
+
+        {/* CHAT MESSAGES AREA */}
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-100/70">
+          {messages.map((msg, index) => (
+            <div
+              key={index}
+              className={`flex flex-col ${
+                msg.role === "user" ? "items-end" : "items-start"
+              }`}
+            >
+              <div
+                className={`max-w-[95%] md:max-w-[80%] rounded-2xl p-4 md:p-5 text-sm shadow-sm ${
+                  msg.role === "user"
+                    ? "bg-blue-600 text-white rounded-br-none font-normal text-left"
+                    : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
                 }`}
               >
-                {isListening ? "🔴" : "🎙️"}
-              </button>
+                {msg.role === "assistant" ? (
+                  <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
+                    {msg.text.split("\n").map((line, lineIdx) => {
+                      const trimmed = line.trim();
+                      if (!trimmed) return null;
 
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Type your question or click mic..."
-                className="flex-1 bg-slate-100 border border-slate-300 rounded-xl px-3 py-2.5 text-xs md:text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-left"
-              />
+                      const isHeading = trimmed.startsWith("**") || trimmed.startsWith("1.") || trimmed.startsWith("-") || trimmed.endsWith(":");
 
-              <button
-                type="submit"
-                disabled={loading || !inputMessage.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow-xs cursor-pointer shrink-0"
-              >
-                Send
-              </button>
-            </form>
-          </div>
+                      return (
+                        <div
+                          key={lineIdx}
+                          className={`${
+                            isHeading
+                              ? "font-bold text-blue-900 text-sm md:text-base mt-3 border-l-4 border-blue-600 pl-3 bg-blue-50/50 py-1 rounded-r-lg text-left"
+                              : "text-slate-700 text-xs md:text-sm pl-1 text-left"
+                          }`}
+                        >
+                          {trimmed.replace(/\*\*/g, "")}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
+                    {msg.text}
+                  </div>
+                )}
+
+                {msg.translatedText && (
+                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-loose shadow-inner" dir="rtl">
+                    <span className="text-blue-700 font-bold block mb-2 text-xs tracking-wide text-left" dir="ltr">🌐 Urdu Translation:</span>
+                    <div className="font-urdu text-right text-slate-800 text-xs md:text-sm" style={{ fontFamily: "Jameel Noori Nastaleeq, Noto Nastaliq Urdu, sans-serif" }}>
+                      {msg.translatedText}
+                    </div>
+                  </div>
+                )}
+
+                {msg.role === "assistant" && (
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-4 text-xs">
+                    <button
+                      onClick={() => speakText(msg.text, index)}
+                      className="flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
+                    >
+                      {isSpeaking === index ? "⏹️ Stop" : "🔊 Listen"}
+                    </button>
+
+                    <button
+                      onClick={() => handleToggleTranslateMessage(index)}
+                      disabled={msg.isTranslating}
+                      className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold cursor-pointer transition bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+                    >
+                      🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Urdu" : "Show Urdu"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs font-semibold text-slate-500 animate-pulse shadow-xs">
+                AI Professor is generating lecture...
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* CHAT INPUT AREA (Sticky & Fully Visible on Mobile) */}
+        <div className="bg-white border-t border-slate-300 p-3 md:p-4 shrink-0 shadow-md z-20">
+          <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleListening}
+              className={`p-2.5 md:p-3 rounded-xl border font-bold text-sm transition flex items-center justify-center cursor-pointer shrink-0 ${
+                isListening
+                  ? "bg-red-600 text-white animate-bounce border-red-600 shadow-sm"
+                  : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+              }`}
+              title="Voice Input"
+            >
+              {isListening ? "🔴" : "🎙️"}
+            </button>
+
+            <input
+              type="text"
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Type your question or click mic..."
+              className="flex-1 bg-slate-100 border border-slate-300 rounded-xl px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm text-slate-900 outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition text-left"
+            />
+
+            <button
+              type="submit"
+              disabled={loading || !inputMessage.trim()}
+              className="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold text-xs px-4 md:px-6 py-2.5 md:py-3 rounded-xl transition shadow-xs cursor-pointer shrink-0"
+            >
+              Send
+            </button>
+          </form>
         </div>
       </div>
     </div>
