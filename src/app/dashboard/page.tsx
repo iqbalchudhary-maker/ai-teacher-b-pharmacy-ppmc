@@ -46,6 +46,17 @@ export default function StudentDashboard() {
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
 
+  // Auto-scroll ref and effect added
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, loading]);
+
   // 1. Fetching chat history for the logged-in student from Neon DB
   useEffect(() => {
     const fetchStudentSessions = async () => {
@@ -306,7 +317,8 @@ export default function StudentDashboard() {
   };
 
   return (
-<div className="flex flex-col 'h-dvh' w-screen bg-slate-100 text-left overflow-hidden" dir="ltr">      {/* MOBILE OVERLAY */}
+    <div className="absolute inset-0 flex flex-col h-full w-full bg-slate-100 text-left overflow-hidden" dir="ltr">
+      {/* MOBILE OVERLAY */}
       {isSidebarOpen && (
         <div 
           onClick={() => setIsSidebarOpen(false)}
@@ -415,7 +427,8 @@ export default function StudentDashboard() {
         {/* MAIN CHAT & INPUT SECTION */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
           {/* CHAT MESSAGES AREA */}
-<div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col justify-end">            {messages.map((msg, index) => (
+          <div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col">
+            {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`flex flex-col ${
@@ -494,6 +507,9 @@ export default function StudentDashboard() {
                 </div>
               </div>
             )}
+            
+            {/* Scroll End Reference Added */}
+            <div ref={messagesEndRef} />
           </div>
 
           {/* CHAT INPUT AREA (Fixed at bottom inside flex) */}
