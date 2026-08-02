@@ -415,8 +415,7 @@ export default function StudentDashboard() {
         {/* MAIN CHAT & INPUT SECTION */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-100">
           {/* CHAT MESSAGES AREA */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {messages.map((msg, index) => (
+<div className="flex-1 overflow-y-auto p-4 space-y-6 flex flex-col justify-end">            {messages.map((msg, index) => (
               <div
                 key={index}
                 className={`flex flex-col ${
