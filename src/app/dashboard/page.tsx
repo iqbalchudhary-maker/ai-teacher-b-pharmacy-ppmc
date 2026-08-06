@@ -27,8 +27,13 @@ export default function StudentDashboard() {
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Student Identification
-  const [studentId, setStudentId] = useState("student_chiniot_01");
+  // Student Identification (رول نمبر اب localStorage سے ڈائنامیکلی آئے گا)
+  const [studentId, setStudentId] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("studentRollNo") || "default_roll_no";
+    }
+    return "default_roll_no";
+  });
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -39,9 +44,12 @@ export default function StudentDashboard() {
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Edit Question State
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editText, setEditText] = useState("");
+
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState<number | null>(null);
-  const [wasVoiceInput, setWasVoiceInput] = useState(false);
 
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
@@ -131,7 +139,6 @@ export default function StudentDashboard() {
           setInputMessage(transcript);
           setIsListening(false);
           isListeningRef.current = false;
-          setWasVoiceInput(true);
         };
 
         recognition.onerror = () => {
@@ -181,8 +188,7 @@ export default function StudentDashboard() {
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const hasUrdu = /[\u0600-\u06FF]/.test(text);
-    utterance.lang = hasUrdu ? "ur-PK" : "en-US";
+    utterance.lang = "en-US";
 
     utterance.onend = () => setIsSpeaking(null);
     utterance.onerror = () => setIsSpeaking(null);
@@ -191,7 +197,7 @@ export default function StudentDashboard() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // Manual Translation Handler
+  // Manual Translation Handler (Roman Urdu)
   const handleToggleTranslateMessage = async (index: number) => {
     const targetMsg = messages[index];
 
@@ -221,12 +227,12 @@ export default function StudentDashboard() {
       const data = await res.json();
       
       if (res.ok) {
-        const finalUrduText = data.translation || data.reply || "";
+        const finalTranslation = data.translation || data.reply || "";
         
         setMessages((prev) =>
           prev.map((msg, i) =>
             i === index
-              ? { ...msg, translatedText: finalUrduText, isTranslating: false }
+              ? { ...msg, translatedText: finalTranslation, isTranslating: false }
               : msg
           )
         );
@@ -248,10 +254,7 @@ export default function StudentDashboard() {
     if (!inputMessage.trim() || loading) return;
 
     const userText = inputMessage;
-    const isVoiceInputTurn = wasVoiceInput;
-
     setInputMessage("");
-    setWasVoiceInput(false);
 
     const newMessages: Message[] = [...messages, { role: "user", text: userText }];
     setMessages(newMessages);
@@ -280,19 +283,59 @@ export default function StudentDashboard() {
           ]);
         }
 
-        const newAssistantIndex = newMessages.length;
         const finalMessages: Message[] = [
           ...newMessages,
           { role: "assistant", text: replyText },
         ];
 
         setMessages(finalMessages);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (isVoiceInputTurn) {
-          setTimeout(() => {
-            speakText(replyText, newAssistantIndex);
-          }, 300);
+  // Edit Question Handler
+  const handleEditSubmit = async (index: number) => {
+    if (!editText.trim()) return;
+    
+    const truncatedMessages = messages.slice(0, index);
+    setMessages(truncatedMessages);
+    setEditingIndex(null);
+    setInputMessage(editText);
+    setEditText("");
+
+    const userText = editText;
+    const newMessages: Message[] = [...truncatedMessages, { role: "user", text: userText }];
+    setMessages(newMessages);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: userText,
+          subject: selectedSubject,
+          sessionId: currentSessionId,
+          studentId: studentId,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        const replyText = data.reply || data.text;
+        if (data.sessionId && !currentSessionId) {
+          setCurrentSessionId(data.sessionId);
+          setSessions((prev) => [
+            { id: data.sessionId, title: userText, createdAt: new Date().toLocaleDateString() },
+            ...prev,
+          ]);
         }
+
+        setMessages([...newMessages, { role: "assistant", text: replyText }]);
       }
     } catch (err) {
       console.error(err);
@@ -322,6 +365,17 @@ export default function StudentDashboard() {
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
+        {/* PPMC Logo pinned in Layout Header / Sidebar Top */}
+        <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/40">
+          <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-md border border-blue-500 shrink-0 overflow-hidden">
+            <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+          </div>
+          <div className="flex flex-col truncate">
+            <span className="text-xs font-bold text-white truncate">Pak Paramedical</span>
+            <span className="text-[10px] text-blue-400 font-medium">College Chiniot</span>
+          </div>
+        </div>
+
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <button
             onClick={startNewChat}
@@ -339,7 +393,7 @@ export default function StudentDashboard() {
 
         <div className="flex-1 p-3 space-y-2 overflow-y-auto text-xs">
           <div className="text-slate-400 font-semibold mb-2 px-2 text-[11px] uppercase tracking-wider">
-            Your Previous Lectures
+            Recent Chats
           </div>
           {sessions.length === 0 ? (
             <div className="text-slate-500 italic px-2 text-[11px]">No saved chats yet.</div>
@@ -376,6 +430,11 @@ export default function StudentDashboard() {
             >
               ☰
             </button>
+
+            {/* PPMC Pin Logo in Header */}
+            <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white font-bold shadow-xs overflow-hidden">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
+            </div>
             
             <div className="flex flex-col text-left">
               <h1 className="text-sm md:text-base font-bold text-slate-800 truncate">
@@ -393,7 +452,7 @@ export default function StudentDashboard() {
               <select
                 value={selectedSubject}
                 onChange={(e) => setSelectedSubject(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer max-w- sm:max-w-none"
+                className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
               >
                 <option value="Pharmaceutics">Pharmaceutics</option>
                 <option value="Anatomy and Physiology">Anatomy & Physiology</option>
@@ -428,7 +487,50 @@ export default function StudentDashboard() {
                     : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
                 }`}
               >
-                {msg.role === "assistant" ? (
+                {msg.role === "user" ? (
+                  <div>
+                    {editingIndex === index ? (
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={editText}
+                          onChange={(e) => setEditText(e.target.value)}
+                          className="w-full bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs outline-none border border-blue-400"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditSubmit(index)}
+                            className="bg-white text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-50"
+                          >
+                            Save & Submit
+                          </button>
+                          <button
+                            onClick={() => setEditingIndex(null)}
+                            className="bg-blue-700 text-white px-3 py-1 rounded text-xs hover:bg-blue-800"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
+                          {msg.text}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditText(msg.text);
+                          }}
+                          className="text-blue-200 hover:text-white text-[11px] underline shrink-0 cursor-pointer font-medium"
+                          title="Edit Question"
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
                   <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
                     {msg.text.split("\n").map((line, lineIdx) => {
                       const trimmed = line.trim();
@@ -450,23 +552,19 @@ export default function StudentDashboard() {
                       );
                     })}
                   </div>
-                ) : (
-                  <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
-                    {msg.text}
-                  </div>
                 )}
 
                 {msg.translatedText && (
-                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-loose shadow-inner" dir="rtl">
-                    <span className="text-blue-700 font-bold block mb-2 text-xs tracking-wide text-left" dir="ltr">🌐 Urdu Translation:</span>
-                    <div className="font-urdu text-right text-slate-800 text-xs md:text-sm" style={{ fontFamily: "Jameel Noori Nastaleeq, Noto Nastaliq Urdu, sans-serif" }}>
+                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-relaxed shadow-inner">
+                    <span className="text-blue-700 font-bold block mb-1 text-xs tracking-wide">🌐 Roman Urdu Translation:</span>
+                    <div className="text-slate-800 text-xs md:text-sm">
                       {msg.translatedText}
                     </div>
                   </div>
                 )}
 
                 {msg.role === "assistant" && (
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-4 text-xs">
+                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-4 text-xs flex-wrap">
                     <button
                       onClick={() => speakText(msg.text, index)}
                       className="flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
@@ -479,7 +577,18 @@ export default function StudentDashboard() {
                       disabled={msg.isTranslating}
                       className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold cursor-pointer transition bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
                     >
-                      🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Urdu" : "Show Urdu"}
+                      🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Roman Urdu" : "Show Roman Urdu"}
+                    </button>
+
+                    {/* Copy Answer Button Added Here */}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(msg.text);
+                        alert("Answer copied to clipboard!");
+                      }}
+                      className="flex items-center gap-1 text-slate-700 hover:text-slate-900 font-bold cursor-pointer transition bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200"
+                    >
+                      📋 Copy Answer
                     </button>
                   </div>
                 )}
@@ -496,7 +605,7 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        {/* CHAT INPUT AREA (Sticky & Fully Visible on Mobile) */}
+        {/* CHAT INPUT AREA */}
         <div className="bg-white border-t border-slate-300 p-3 md:p-4 shrink-0 shadow-md z-20">
           <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex items-center gap-2">
             <button

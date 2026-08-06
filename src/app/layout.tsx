@@ -4,6 +4,9 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Pak Paramedical College Chiniot - AI Tutor",
   description: "Official B-Pharmacy Category-B AI Teaching System developed by SM Tech",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export const viewport: Viewport = {
@@ -20,7 +23,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="h-full">
-      <body className="h-hdv w-screen bg-slate-900 font-sans antialiased text-slate-100 overflow-hidden relative">
+      <body className="h-dvh w-screen bg-slate-900 font-sans antialiased text-slate-100 overflow-hidden relative">
         {children}
       </body>
     </html>

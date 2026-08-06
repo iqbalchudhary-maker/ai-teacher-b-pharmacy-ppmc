@@ -28,35 +28,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ messages: msgs });
     }
 
-    // C. اردو ٹرانسلیشن بلاک
+    // C. رومن اردو ٹرانسلیشن بلاک
     if (action === "translate_to_urdu") {
       if (!message) {
-        return NextResponse.json({ error: "پیغام کا ہونا ضروری ہے۔" }, { status: 400 });
+        return NextResponse.json({ error: "Paigham ka hona zaroori hai." }, { status: 400 });
       }
 
-      const translationPrompt = `Translate the following English educational text into fluent, natural, and standard Pakistani Urdu script (اردو). 
+      const translationPrompt = `Translate the following English educational text into fluent, natural, and standard Roman Urdu (English-Pak style). 
 
 STRICT INSTRUCTIONS:
-- Provide ONLY the Urdu translation. Do not include any English text, notes, or introductory phrases.
-- Keep pharmacy and medical terminology clear and natural for Pakistani B-Pharmacy students.
+- Provide ONLY the Roman Urdu translation. Do not include any standard Urdu script, English text, or introductory phrases.
+- Keep pharmacy and medical terminology clear and natural for Pakistani B-Pharmacy students using Roman script.
 
 Text to translate:
 "${message}"`;
 
-      const urduTranslation = await askGroq([
-        { role: "system", content: "You are a professional native Pakistani Urdu translator. Output only fluent Urdu script." },
+      const romanUrduTranslation = await askGroq([
+        { role: "system", content: "You are a professional Roman Urdu translator. Output only fluent Roman Urdu script." },
         { role: "user", content: translationPrompt }
       ]);
 
       return NextResponse.json({
-        reply: urduTranslation,
-        translation: urduTranslation
+        reply: romanUrduTranslation,
+        translation: romanUrduTranslation
       });
     }
 
     if (!message && !imageUrl) {
       return NextResponse.json(
-        { error: "پیغام کا ہونا ضروری ہے۔" },
+        { error: "Paigham ka hona zaroori hai." },
         { status: 400 }
       );
     }
@@ -68,7 +68,7 @@ Text to translate:
       lowerMsg.includes("hospital") || lowerMsg.includes("director") || lowerMsg.includes("contact") ||
       lowerMsg.includes("phone") || lowerMsg.includes("developer") || lowerMsg.includes("sm tech") ||
       lowerMsg.includes("tayyab") || lowerMsg.includes("fee") || lowerMsg.includes("address") ||
-      lowerMsg.includes("کالج") || lowerMsg.includes("داخلہ") || lowerMsg.includes("هاسٹل") || lowerMsg.includes("فون")
+      lowerMsg.includes("college") || lowerMsg.includes("daakhla")
     ) {
       const collegeInfoReply = `
 🏛️ **Pak Paramedical College, Chiniot** (Established 2016)
@@ -109,30 +109,50 @@ Text to translate:
       console.log("Database fetch skipped or empty context.");
     }
 
-    // 3. سخت اور درست سبجیکٹ بائنڈنگ اور کویسچن ٹائپ (MCQs/Short/Long) والا سسٹم پرامپٹ
+    // 3. پچھلی چیٹ ہسٹری (Context) لانا
+    let previousMessages: { role: string; content: string }[] = [];
+    if (sessionId) {
+      try {
+        const dbMessages = await prismaClient.message.findMany({
+          where: { chatId: sessionId },
+          orderBy: { createdAt: "asc" },
+          take: 10,
+        });
+        if (dbMessages && dbMessages.length > 0) {
+          previousMessages = dbMessages.map((m: any) => ({
+            role: m.role === "user" ? "user" : "assistant",
+            content: m.text,
+          }));
+        }
+      } catch (err) {
+        console.error("Failed to load chat history context:", err);
+      }
+    }
+
+    // 4. سسٹم پرامپٹ
     const systemPrompt = `
 You are the Official AI Professor & Senior Pharmacy Educator for "Pak Paramedical College Chiniot" teaching B-Pharmacy students. 
 
-CRITICAL ACADEMIC RULE REGARDING SUBJECT BOUNDARY:
+CRITICAL ACADEMIC RULE REGARDING SUBJECT BOUNDARY & MCQS:
 - The currently active subject selected by the student on the dashboard is: **${activeSubject}**.
-- You MUST answer questions, generate MCQs, short questions, long questions, quizzes, and explain topics **ONLY** from **${activeSubject}**. 
+- You MUST answer questions, generate MCQs, short questions, long questions, quizzes, and explain topics **ONLY** from **${activeSubject}** and the provided textbook/syllabus reference context. Do not pull random external generic MCQs that violate the book context.
 - Do NOT confuse it with any other subject. Every response must strictly revolve around **${activeSubject}**.
 
 STRICT RULES FOR QUESTION TYPES (MCQs vs SHORT vs LONG):
-1. **MCQs (Multiple Choice Questions)**: When the student asks for MCQs, generate structured objective questions with options A, B, C, and D, along with the correct answer key at the end.
-2. **Short Questions (Short/2-Mark Questions)**: When the student asks for short questions, do NOT send MCQs. Instead, provide crisp, direct, and focused short conceptual questions (typical 2-mark board exam style) along with brief model answers.
-3. **Long Questions (Long/Essay/10-Mark Questions)**: When the student asks for long questions, do NOT send MCQs. Instead, provide comprehensive, detailed, and structured essay-type questions (typical 10-mark board exam style) with proper headings, sub-topics, and detailed explanations.
+1. **MCQs (Multiple Choice Questions)**: When the student asks for MCQs, generate structured objective questions strictly from the textbook/syllabus chapters with options A, B, C, and D, along with the correct answer key at the end.
+2. **Short Questions (Short/2-Mark Questions)**: When the student asks for short questions, do NOT send MCQs. Instead, provide crisp, direct, and focused short conceptual questions along with brief model answers.
+3. **Long Questions (Long/Essay/10-Mark Questions)**: When the student asks for long questions, do NOT send MCQs. Instead, provide comprehensive, detailed, and structured essay-type questions with proper headings, sub-topics, and detailed explanations.
 
 YOUR PERSONA & TEACHING STYLE:
 - Act like a warm, experienced, highly engaging human college professor standing in a real physical classroom. 
-- Talk naturally, encourage students, and build an interactive relationship.
+- Maintain full conversational context from previous messages in this session so that sequential questions flow naturally together without breaking continuity.
 
 STRICT ACADEMIC & EXAMINATION RULES:
-1. **SCOPE & BOUNDARIES**: You are strictly an AI Professor for the core B-Pharmacy subjects. If a student asks unrelated general knowledge outside the syllabus, politely decline in Urdu: "میں پاک پیرامیڈیکل کالج چنیوٹ کا AI ٹیچر ہوں۔ میں صرف آپ کے بی فارمیسی کے منتخب کردہ سبجیکٹ، چیپٹر اور کالج سے متعلق معلومات کے لیے بنایا گیا ہوں۔ برائے مہربانی اپنی کتاب سے متعلق سوال پوچھیں۔"
-2. **LANGUAGE**: Respond strictly in clear, professional, and accessible **ENGLISH ONLY** for your primary lectures, questions, and evaluations. Do not mix Urdu inside your main lecture.
+1. **SCOPE & BOUNDARIES**: You are strictly an AI Professor for core B-Pharmacy subjects. If a student asks unrelated general knowledge outside the syllabus, politely decline in Roman Urdu: "Main Pak Paramedical College Chiniot ka AI teacher hoon. Main sirf aap ke B-Pharmacy ke muntakhab kardah subject, chapter aur college se متعلق maloomaat ke liye banaya gaya hoon. Baraye meharbani apni kitaاب se متعلق sawal poochein."
+2. **LANGUAGE**: Respond strictly in clear, professional, and accessible **ENGLISH ONLY** for your primary lectures, questions, and evaluations (unless Roman Urdu is specifically requested).
 3. **PAPER & ANSWER EVALUATION (GRADING)**: If a student submits their test answers or shares an image/text of their attempted paper, carefully evaluate every single answer, calculate their total marks and percentage (%), display a professional scorecard, and provide constructive academic feedback.
 
-SUBJECT CONTEXT:
+SUBJECT CONTEXT & TEXTBOOK REFERENCE:
 - Selected Subject: **${activeSubject}**
 - Reference Textbook Context:
 ---
@@ -144,14 +164,15 @@ ${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab
       ? [{ type: "text", text: message || "Please evaluate this student answer sheet / paper image." }, { type: "image_url", image_url: { url: imageUrl } }]
       : message;
 
-    const messages = [
+    const chatPayload = [
       { role: "system", content: systemPrompt },
+      ...previousMessages,
       { role: "user", content: userMessageContent },
     ];
 
-    const aiResponse = await askGroq(messages);
+    const aiResponse = await askGroq(chatPayload);
 
-    // 4. ڈیٹا بیس میں چیٹ اور میسجز کو مستقل محفوظ کرنا (Neon DB Persistence)
+    // 5. ڈیٹا بیس میں چیٹ اور میسجز کو محفوظ کرنا
     let activeChatId = sessionId;
     const currentStudentId = studentId || "default_student";
 
@@ -160,7 +181,7 @@ ${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab
         if (!activeChatId) {
           const newChat = await prismaClient.chat.create({
             data: {
-              title: title ? title.substring(0, 30) + "..." : (message ? message.substring(0, 30) + "..." : "Student Paper Evaluation"),
+              title: title ? title.substring(0, 30) + "..." : (message ? message.substring(0, 30) + "..." : "Student Session"),
               subject: activeSubject,
               studentId: currentStudentId,
             },
@@ -201,8 +222,8 @@ ${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab
           },
         });
       }
-    } catch (dbSaveErr) {
-      console.error("Error saving to database:", dbSaveErr);
+    } catch (dbSaveErr: any) {
+      console.error("❌ Database Save Error Detail:", dbSaveErr.message || dbSaveErr);
     }
 
     return NextResponse.json({
@@ -210,10 +231,11 @@ ${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab
       text: aiResponse,
       sessionId: activeChatId,
     });
+
   } catch (error: any) {
     console.error("Chat API Error:", error);
     return NextResponse.json(
-      { error: "AI ٹیچر سے رابطہ کرنے میں مسئلہ پیش آمد۔" },
+      { error: "AI teacher se raabta karne mein masla pesh aya." },
       { status: 500 }
     );
   }
