@@ -143,6 +143,9 @@ STRICT RULES FOR QUESTION TYPES (MCQs vs SHORT vs LONG):
 2. **Short Questions (Short/2-Mark Questions)**: When the student asks for short questions, do NOT send MCQs. Instead, provide crisp, direct, and focused short conceptual questions along with brief model answers.
 3. **Long Questions (Long/Essay/10-Mark Questions)**: When the student asks for long questions, do NOT send MCQs. Instead, provide comprehensive, detailed, and structured essay-type questions with proper headings, sub-topics, and detailed explanations.
 
+MERMAID DIAGRAM RULE:
+- Only generate a Mermaid.js diagram block if the user's question involves a medical process, biological pathway, manufacturing steps, or something that naturally requires a visual flowchart. For general greetings, simple definitions, or conversational chats, do NOT generate any diagram.
+
 YOUR PERSONA & TEACHING STYLE:
 - Act like a warm, experienced, highly engaging human college professor standing in a real physical classroom. 
 - Maintain full conversational context from previous messages in this session so that sequential questions flow naturally together without breaking continuity.
@@ -172,64 +175,12 @@ ${bookContext ? bookContext.substring(0, 4000) : `Use official B-Pharmacy Punjab
 
     const aiResponse = await askGroq(chatPayload);
 
-    // 5. ڈیٹا بیس میں چیٹ اور میسجز کو محفوظ کرنا
-    let activeChatId = sessionId;
-    const currentStudentId = studentId || "default_student";
-
-    try {
-      if (prismaClient.chat && prismaClient.message) {
-        if (!activeChatId) {
-          const newChat = await prismaClient.chat.create({
-            data: {
-              title: title ? title.substring(0, 30) + "..." : (message ? message.substring(0, 30) + "..." : "Student Session"),
-              subject: activeSubject,
-              studentId: currentStudentId,
-            },
-          });
-          activeChatId = newChat.id;
-        } else {
-          const existingChat = await prismaClient.chat.findUnique({
-            where: { id: activeChatId }
-          });
-          if (!existingChat) {
-            const newChat = await prismaClient.chat.create({
-              data: {
-                id: activeChatId,
-                title: message ? message.substring(0, 30) + "..." : "Student Session",
-                subject: activeSubject,
-                studentId: currentStudentId,
-              },
-            });
-            activeChatId = newChat.id;
-          }
-        }
-
-        // یوزر کا میسج محفوظ کریں
-        await prismaClient.message.create({
-          data: {
-            chatId: activeChatId,
-            role: "user",
-            text: message || "[Uploaded Paper/Image]",
-          },
-        });
-
-        // اے آئی کا جواب محفوظ کریں
-        await prismaClient.message.create({
-          data: {
-            chatId: activeChatId,
-            role: "assistant",
-            text: aiResponse,
-          },
-        });
-      }
-    } catch (dbSaveErr: any) {
-      console.error("❌ Database Save Error Detail:", dbSaveErr.message || dbSaveErr);
-    }
+    // ڈیٹا بیس میں چیٹ یا میسج سیو کرنے والا کوڈ یہاں سے مکمل طور پر ختم کر دیا گیا ہے
 
     return NextResponse.json({
       reply: aiResponse,
       text: aiResponse,
-      sessionId: activeChatId,
+      sessionId: sessionId || "temp_session",
     });
 
   } catch (error: any) {

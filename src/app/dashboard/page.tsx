@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import mermaid from "mermaid";
 
 interface Message {
   id?: string;
@@ -9,6 +10,7 @@ interface Message {
   text: string;
   translatedText?: string;
   isTranslating?: boolean;
+  showDiagram?: boolean;
 }
 
 interface ChatSession {
@@ -27,13 +29,29 @@ export default function StudentDashboard() {
   // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Student Identification (رول نمبر اب localStorage سے ڈائنامیکلی آئے گا)
-  const [studentId, setStudentId] = useState(() => {
+  // Authentication States
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [studentId, setStudentId] = useState<string>("default_roll_no");
+
+  // Cookie-based Authentication Protection (Prevents infinite redirect loop)
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      return localStorage.getItem("studentRollNo") || "default_roll_no";
+      const getCookie = (name: string) => {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift();
+      };
+
+      const rollNo = getCookie("studentRollNo");
+
+      if (!rollNo) {
+        router.push("/login");
+      } else {
+        setStudentId(rollNo);
+        setIsAuthenticated(true);
+      }
     }
-    return "default_roll_no";
-  });
+  }, [router]);
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -53,6 +71,15 @@ export default function StudentDashboard() {
 
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
+
+  // Initialize Mermaid
+  useEffect(() => {
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  }, []);
+
+  useEffect(() => {
+    mermaid.contentLoaded();
+  }, [messages]);
 
   // 1. Fetching chat history for the logged-in student from Neon DB
   useEffect(() => {
@@ -75,10 +102,10 @@ export default function StudentDashboard() {
       }
     };
 
-    if (studentId) {
+    if (isAuthenticated && studentId && studentId !== "default_roll_no") {
       fetchStudentSessions();
     }
-  }, [studentId]);
+  }, [isAuthenticated, studentId]);
 
   // 2. Loading messages for a previous session
   const loadSession = async (session: ChatSession) => {
@@ -249,6 +276,15 @@ export default function StudentDashboard() {
     }
   };
 
+  // Toggle Diagram Visibility
+  const handleToggleDiagram = (index: number) => {
+    setMessages((prev) =>
+      prev.map((msg, i) =>
+        i === index ? { ...msg, showDiagram: !msg.showDiagram } : msg
+      )
+    );
+  };
+
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputMessage.trim() || loading) return;
@@ -345,8 +381,20 @@ export default function StudentDashboard() {
   };
 
   const handleLogout = () => {
+    if (typeof window !== "undefined") {
+      document.cookie = "studentRollNo=; path=/; max-age=0";
+    }
     router.push("/login");
   };
+
+  // Show loading state while checking authentication to prevent redirect loops
+  if (!isAuthenticated) {
+    return (
+      <div className="flex h-dvh w-screen items-center justify-center bg-slate-100 text-slate-700 font-bold text-sm">
+        Verifying student session...
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-dvh w-screen bg-slate-100 text-left overflow-hidden" dir="ltr">
@@ -365,7 +413,6 @@ export default function StudentDashboard() {
         transform transition-transform duration-300 ease-in-out
         ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
       `}>
-        {/* PPMC Logo pinned in Layout Header / Sidebar Top */}
         <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-slate-950/40">
           <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center font-bold text-white shadow-md border border-blue-500 shrink-0 overflow-hidden">
             <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
@@ -431,7 +478,6 @@ export default function StudentDashboard() {
               ☰
             </button>
 
-            {/* PPMC Pin Logo in Header */}
             <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600 text-white font-bold shadow-xs overflow-hidden">
               <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
@@ -473,128 +519,155 @@ export default function StudentDashboard() {
 
         {/* CHAT MESSAGES AREA */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-slate-100/70">
-          {messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`flex flex-col ${
-                msg.role === "user" ? "items-end" : "items-start"
-              }`}
-            >
+          {messages.map((msg, index) => {
+            const hasDiagram = msg.role === "assistant" && msg.text.includes("```mermaid");
+
+            return (
               <div
-                className={`max-w-[95%] md:max-w-[80%] rounded-2xl p-4 md:p-5 text-sm shadow-sm ${
-                  msg.role === "user"
-                    ? "bg-blue-600 text-white rounded-br-none font-normal text-left"
-                    : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
+                key={index}
+                className={`flex flex-col ${
+                  msg.role === "user" ? "items-end" : "items-start"
                 }`}
               >
-                {msg.role === "user" ? (
-                  <div>
-                    {editingIndex === index ? (
-                      <div className="space-y-2">
-                        <input
-                          type="text"
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          className="w-full bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs outline-none border border-blue-400"
-                        />
-                        <div className="flex gap-2">
+                <div
+                  className={`max-w-[95%] md:max-w-[80%] rounded-2xl p-4 md:p-5 text-sm shadow-sm ${
+                    msg.role === "user"
+                      ? "bg-blue-600 text-white rounded-br-none font-normal text-left"
+                      : "bg-white border border-slate-200 text-slate-900 rounded-bl-none text-left"
+                  }`}
+                >
+                  {msg.role === "user" ? (
+                    <div>
+                      {editingIndex === index ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="w-full bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs outline-none border border-blue-400"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleEditSubmit(index)}
+                              className="bg-white text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-50"
+                            >
+                              Save & Submit
+                            </button>
+                            <button
+                              onClick={() => setEditingIndex(null)}
+                              className="bg-blue-700 text-white px-3 py-1 rounded text-xs hover:bg-blue-800"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
+                            {msg.text}
+                          </div>
                           <button
-                            onClick={() => handleEditSubmit(index)}
-                            className="bg-white text-blue-600 px-3 py-1 rounded font-bold text-xs hover:bg-blue-50"
+                            onClick={() => {
+                              setEditingIndex(index);
+                              setEditText(msg.text);
+                            }}
+                            className="text-blue-200 hover:text-white text-[11px] underline shrink-0 cursor-pointer font-medium"
+                            title="Edit Question"
                           >
-                            Save & Submit
-                          </button>
-                          <button
-                            onClick={() => setEditingIndex(null)}
-                            className="bg-blue-700 text-white px-3 py-1 rounded text-xs hover:bg-blue-800"
-                          >
-                            Cancel
+                            ✏️ Edit
                           </button>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="whitespace-pre-wrap leading-relaxed font-sans text-left text-xs md:text-sm">
-                          {msg.text}
-                        </div>
-                        <button
-                          onClick={() => {
-                            setEditingIndex(index);
-                            setEditText(msg.text);
-                          }}
-                          className="text-blue-200 hover:text-white text-[11px] underline shrink-0 cursor-pointer font-medium"
-                          title="Edit Question"
-                        >
-                          ✏️ Edit
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
-                    {msg.text.split("\n").map((line, lineIdx) => {
-                      const trimmed = line.trim();
-                      if (!trimmed) return null;
-
-                      const isHeading = trimmed.startsWith("**") || trimmed.startsWith("1.") || trimmed.startsWith("-") || trimmed.endsWith(":");
-
-                      return (
-                        <div
-                          key={lineIdx}
-                          className={`${
-                            isHeading
-                              ? "font-bold text-blue-900 text-sm md:text-base mt-3 border-l-4 border-blue-600 pl-3 bg-blue-50/50 py-1 rounded-r-lg text-left"
-                              : "text-slate-700 text-xs md:text-sm pl-1 text-left"
-                          }`}
-                        >
-                          {trimmed.replace(/\*\*/g, "")}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {msg.translatedText && (
-                  <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-relaxed shadow-inner">
-                    <span className="text-blue-700 font-bold block mb-1 text-xs tracking-wide">🌐 Roman Urdu Translation:</span>
-                    <div className="text-slate-800 text-xs md:text-sm">
-                      {msg.translatedText}
+                      )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="space-y-2.5 font-sans leading-relaxed text-slate-800 text-left">
+                      {msg.text.split("\n").map((line, lineIdx) => {
+                        const trimmed = line.trim();
+                        if (!trimmed) return null;
 
-                {msg.role === "assistant" && (
-                  <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-4 text-xs flex-wrap">
-                    <button
-                      onClick={() => speakText(msg.text, index)}
-                      className="flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
-                    >
-                      {isSpeaking === index ? "⏹️ Stop" : "🔊 Listen"}
-                    </button>
+                        if (trimmed.startsWith("```mermaid") || trimmed.startsWith("```") || (hasDiagram && trimmed.includes("-->"))) {
+                          return null;
+                        }
 
-                    <button
-                      onClick={() => handleToggleTranslateMessage(index)}
-                      disabled={msg.isTranslating}
-                      className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold cursor-pointer transition bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
-                    >
-                      🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Roman Urdu" : "Show Roman Urdu"}
-                    </button>
+                        const isHeading = trimmed.startsWith("**") || trimmed.startsWith("1.") || trimmed.startsWith("-") || trimmed.endsWith(":");
 
-                    {/* Copy Answer Button Added Here */}
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(msg.text);
-                        alert("Answer copied to clipboard!");
-                      }}
-                      className="flex items-center gap-1 text-slate-700 hover:text-slate-900 font-bold cursor-pointer transition bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200"
-                    >
-                      📋 Copy Answer
-                    </button>
-                  </div>
-                )}
+                        return (
+                          <div
+                            key={lineIdx}
+                            className={`${
+                              isHeading
+                                ? "font-bold text-blue-900 text-sm md:text-base mt-3 border-l-4 border-blue-600 pl-3 bg-blue-50/50 py-1 rounded-r-lg text-left"
+                                : "text-slate-700 text-xs md:text-sm pl-1 text-left"
+                            }`}
+                          >
+                            {trimmed.replace(/\*\*/g, "")}
+                          </div>
+                        );
+                      })}
+
+                      {/* Render Diagram if toggled on */}
+                      {hasDiagram && msg.showDiagram && (
+                        <div className="my-4 p-4 bg-slate-50 border border-blue-200 rounded-xl overflow-x-auto text-center">
+                          <div className="mermaid">
+                            {msg.text.split("```mermaid")[1]?.split("```")[0]}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {msg.translatedText && (
+                    <div className="mt-4 pt-4 border-t border-blue-200 bg-blue-50/90 p-3 md:p-4 rounded-xl text-slate-900 font-medium text-sm leading-relaxed shadow-inner">
+                      <span className="text-blue-700 font-bold block mb-1 text-xs tracking-wide">🌐 Roman Urdu Translation:</span>
+                      <div className="text-slate-800 text-xs md:text-sm">
+                        {msg.translatedText}
+                      </div>
+                    </div>
+                  )}
+
+                  {msg.role === "assistant" && (
+                    <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-start gap-3 text-xs flex-wrap">
+                      <button
+                        onClick={() => speakText(msg.text, index)}
+                        className="flex items-center gap-1 text-blue-600 font-bold hover:underline cursor-pointer"
+                      >
+                        {isSpeaking === index ? "⏹️ Stop" : "🔊 Listen"}
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleTranslateMessage(index)}
+                        disabled={msg.isTranslating}
+                        className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 font-bold cursor-pointer transition bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200"
+                      >
+                        🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Roman Urdu" : "Show Roman Urdu"}
+                      </button>
+
+                      {/* Diagram Toggle Button */}
+                      {hasDiagram && (
+                        <button
+                          onClick={() => handleToggleDiagram(index)}
+                          className="flex items-center gap-1 text-purple-700 hover:text-purple-900 font-bold cursor-pointer transition bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200"
+                        >
+                          🎨 {msg.showDiagram ? "Hide Diagram" : "Show Diagram"}
+                        </button>
+                      )}
+
+                      {/* Copy Answer Button */}
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(msg.text);
+                          alert("Answer copied to clipboard!");
+                        }}
+                        className="flex items-center gap-1 text-slate-700 hover:text-slate-900 font-bold cursor-pointer transition bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200"
+                      >
+                        📋 Copy Answer
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {loading && (
             <div className="flex justify-start">

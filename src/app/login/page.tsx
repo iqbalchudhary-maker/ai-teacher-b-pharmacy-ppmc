@@ -29,6 +29,9 @@ export default function LoginPage() {
         throw new Error(data.error || "لاگ ان میں مسئلہ پیش آیا");
       }
 
+      // 💡 اہم تبدیلی: لاگ ان کامیاب ہوتے ہی براؤزر کی کوکی میں رول نمبر سیو کریں
+      document.cookie = `studentRollNo=${rollNumber.trim()}; path=/; max-age=${60 * 60 * 24 * 7}`;
+
       // Redirect to Student Dashboard
       router.push("/dashboard");
     } catch (err: any) {
@@ -66,7 +69,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">پاس ورড (Password)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">پاس ورڈ (Password)</label>
             <input
               type="password"
               required
@@ -80,7 +83,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-blue-700 py-3 text-sm font-bold text-white hover:bg-blue-800 transition disabled:opacity-50 shadow-md"
+            className="w-full rounded-lg bg-blue-700 py-3 text-sm font-bold text-white hover:bg-blue-800 transition disabled:opacity-50 shadow-md cursor-pointer"
           >
             {loading ? "لاگ ان ہو رہا ہے..." : "لاگ ان کریں (Login)"}
           </button>
