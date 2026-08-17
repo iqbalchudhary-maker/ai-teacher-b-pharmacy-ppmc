@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File | null;
     const title = formData.get("title") as string || file?.name.replace(/\.[^/.]+$/, "") || "Untitled Book";
     const subject = formData.get("subject") as string || "General";
+    const part = formData.get("part") as string || "1"; // یہاں فرنٹ اینڈ سے آنے والا پارٹ کیچ کیا جا رہا ہے
 
     if (!file) {
       return NextResponse.json(
@@ -31,11 +32,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // ڈائریکٹ Prisma کے ذریعے Database میں سیو کریں
+    // ڈائریکٹ Prisma کے ذریعے Database میں سیو کریں (ساتھ میں part بھی شامل کر دیا گیا ہے)
     const newBook = await db.book.create({
       data: {
         title,
         subject,
+        part, // اب یہ ڈیٹا بیس میں بالکل درست سیو ہوگا
         content: extractedText,
       },
     });
@@ -47,6 +49,7 @@ export async function POST(req: Request) {
         id: newBook.id,
         title: newBook.title,
         subject: newBook.subject,
+        part: newBook.part,
       },
     });
   } catch (error: any) {

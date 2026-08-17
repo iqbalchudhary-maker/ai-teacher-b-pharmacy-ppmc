@@ -1,7 +1,8 @@
+// app/dashboard/page.tsx
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import mermaid from "mermaid";
 
 interface Message {
@@ -19,21 +20,24 @@ interface ChatSession {
   createdAt: string;
 }
 
-export default function StudentDashboard() {
+function DashboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const urlPart = searchParams.get("part");
+  const [part, setPart] = useState<string>(urlPart || "1");
 
-  const [selectedSubject, setSelectedSubject] = useState("Pharmaceutics");
+  const [selectedSubject, setSelectedSubject] = useState<string>(
+    part === "2" ? "Pharmaceutics-II part2" : "Pharmaceutics"
+  );
+
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  
-  // Mobile Sidebar State
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Authentication States
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [studentId, setStudentId] = useState<string>("default_roll_no");
 
-  // Cookie-based Authentication Protection (Prevents infinite redirect loop)
   useEffect(() => {
     if (typeof window !== "undefined") {
       const getCookie = (name: string) => {
@@ -43,26 +47,34 @@ export default function StudentDashboard() {
       };
 
       const rollNo = getCookie("studentRollNo");
+      const cookiePart = getCookie("studentPart");
 
       if (!rollNo) {
         router.push("/login");
       } else {
         setStudentId(rollNo);
         setIsAuthenticated(true);
+
+        if (urlPart) {
+          setPart(urlPart);
+          setSelectedSubject(urlPart === "2" ? "Pharmaceutics-II part2" : "Pharmaceutics");
+        } else if (cookiePart) {
+          setPart(cookiePart);
+          setSelectedSubject(cookiePart === "2" ? "Pharmaceutics-II part2" : "Pharmaceutics");
+        }
       }
     }
-  }, [router]);
+  }, [router, urlPart]);
 
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      text: "Welcome to Pak Paramedical College Chiniot! I am your AI Professor. Which chapter or topic would you like to cover today?",
+      text: `Welcome to Pak Paramedical College Chiniot! I am your AI Professor for B-Pharmacy Part ${part}. Which chapter or topic would you like to cover today?`,
     },
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Edit Question State
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editText, setEditText] = useState("");
 
@@ -72,16 +84,18 @@ export default function StudentDashboard() {
   const recognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
 
-  // Initialize Mermaid
   useEffect(() => {
     mermaid.initialize({ startOnLoad: true, theme: 'default' });
   }, []);
 
   useEffect(() => {
-    mermaid.contentLoaded();
+    try {
+      mermaid.contentLoaded();
+    } catch (e) {
+      console.error("Mermaid rendering error:", e);
+    }
   }, [messages]);
 
-  // 1. Fetching chat history for the logged-in student from Neon DB
   useEffect(() => {
     const fetchStudentSessions = async () => {
       try {
@@ -107,7 +121,6 @@ export default function StudentDashboard() {
     }
   }, [isAuthenticated, studentId]);
 
-  // 2. Loading messages for a previous session
   const loadSession = async (session: ChatSession) => {
     setCurrentSessionId(session.id);
     setIsSidebarOpen(false);
@@ -139,12 +152,11 @@ export default function StudentDashboard() {
     setMessages([
       {
         role: "assistant",
-        text: `Welcome! I am your AI Professor for ${selectedSubject}. Which chapter or topic would you like to start today?`,
+        text: `Welcome! I am your AI Professor for ${selectedSubject} (Part ${part}). Which chapter or topic would you like to start today?`,
       },
     ]);
   };
 
-  // Speech Recognition Setup
   useEffect(() => {
     if (typeof window !== "undefined") {
       const SpeechRecognition =
@@ -185,7 +197,7 @@ export default function StudentDashboard() {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Please use Google Chrome for voice input support.");
+      alert("Please use Google Chrome or a supported browser for voice input.");
       return;
     }
 
@@ -224,7 +236,6 @@ export default function StudentDashboard() {
     window.speechSynthesis.speak(utterance);
   };
 
-  // Manual Translation Handler (Roman Urdu)
   const handleToggleTranslateMessage = async (index: number) => {
     const targetMsg = messages[index];
 
@@ -276,7 +287,6 @@ export default function StudentDashboard() {
     }
   };
 
-  // Toggle Diagram Visibility
   const handleToggleDiagram = (index: number) => {
     setMessages((prev) =>
       prev.map((msg, i) =>
@@ -303,6 +313,7 @@ export default function StudentDashboard() {
         body: JSON.stringify({
           message: userText,
           subject: selectedSubject,
+          part: part,
           sessionId: currentSessionId,
           studentId: studentId,
         }),
@@ -333,7 +344,6 @@ export default function StudentDashboard() {
     }
   };
 
-  // Edit Question Handler
   const handleEditSubmit = async (index: number) => {
     if (!editText.trim()) return;
     
@@ -355,6 +365,7 @@ export default function StudentDashboard() {
         body: JSON.stringify({
           message: userText,
           subject: selectedSubject,
+          part: part,
           sessionId: currentSessionId,
           studentId: studentId,
         }),
@@ -383,11 +394,11 @@ export default function StudentDashboard() {
   const handleLogout = () => {
     if (typeof window !== "undefined") {
       document.cookie = "studentRollNo=; path=/; max-age=0";
+      document.cookie = "studentPart=; path=/; max-age=0";
     }
     router.push("/login");
   };
 
-  // Show loading state while checking authentication to prevent redirect loops
   if (!isAuthenticated) {
     return (
       <div className="flex h-dvh w-screen items-center justify-center bg-slate-100 text-slate-700 font-bold text-sm">
@@ -461,8 +472,19 @@ export default function StudentDashboard() {
           )}
         </div>
 
-        <div className="p-4 border-t border-slate-800 text-[10px] text-slate-500 text-center">
-          Pak PPMC Chiniot | SM Tech AI
+        <div className="p-4 border-t border-slate-800 text-[10px] text-slate-400 text-center space-y-1">
+          <div>Pak PPMC Chiniot</div>
+          <div>
+            Powered by{" "}
+            <a 
+              href="https://www.smtechaisolutions.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-400 hover:underline font-semibold"
+            >
+              SM Tech AI Solutions
+            </a>
+          </div>
         </div>
       </aside>
 
@@ -486,8 +508,8 @@ export default function StudentDashboard() {
               <h1 className="text-sm md:text-base font-bold text-slate-800 truncate">
                 Pak Paramedical College, Chiniot
               </h1>
-              <p className="text-[10px] md:text-[11px] text-slate-500 font-medium">
-                B-Pharmacy AI Learning Portal
+              <p className="text-[10px] md:text-[11px] text-blue-600 font-bold">
+                B-Pharmacy Part {part} AI Learning Portal
               </p>
             </div>
           </div>
@@ -500,11 +522,23 @@ export default function StudentDashboard() {
                 onChange={(e) => setSelectedSubject(e.target.value)}
                 className="bg-transparent text-xs font-bold text-slate-800 outline-none cursor-pointer"
               >
-                <option value="Pharmaceutics">Pharmaceutics</option>
-                <option value="Anatomy and Physiology">Anatomy & Physiology</option>
-                <option value="Microbiology">Microbiology</option>
-                <option value="Biochemistry">Biochemistry</option>
-                <option value="Pharmacognosy">Pharmacognosy</option>
+                {part === "1" ? (
+                  <>
+                    <option value="Pharmaceutics">Pharmaceutics</option>
+                    <option value="Anatomy and Physiology">Anatomy and Physiology</option>
+                    <option value="Microbiology">Microbiology</option>
+                    <option value="Biochemistry">Biochemistry</option>
+                    <option value="Pharmacognosy">Pharmacognosy</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Pharmaceutics-II part2">Pharmaceutics-II part2</option>
+                    <option value="Pharmaceutics-III-part2">Pharmaceutics-III-part2</option>
+                    <option value="Pharmacology Part 2">Pharmacology Part 2</option>
+                    <option value="Social Behavior Law Professional Ethics and Forensic Pharmacy">Social Behavior Law Professional Ethics and Forensic Pharmacy</option>
+                    <option value="Computer Part 2">Computer Part 2</option>
+                  </>
+                )}
               </select>
             </div>
 
@@ -605,7 +639,6 @@ export default function StudentDashboard() {
                         );
                       })}
 
-                      {/* Render Diagram if toggled on */}
                       {hasDiagram && msg.showDiagram && (
                         <div className="my-4 p-4 bg-slate-50 border border-blue-200 rounded-xl overflow-x-auto text-center">
                           <div className="mermaid">
@@ -642,7 +675,6 @@ export default function StudentDashboard() {
                         🌐 {msg.isTranslating ? "Translating..." : msg.translatedText ? "Hide Roman Urdu" : "Show Roman Urdu"}
                       </button>
 
-                      {/* Diagram Toggle Button */}
                       {hasDiagram && (
                         <button
                           onClick={() => handleToggleDiagram(index)}
@@ -652,7 +684,6 @@ export default function StudentDashboard() {
                         </button>
                       )}
 
-                      {/* Copy Answer Button */}
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText(msg.text);
@@ -713,5 +744,13 @@ export default function StudentDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function StudentDashboard() {
+  return (
+    <Suspense fallback={<div className="flex h-dvh w-screen items-center justify-center text-xs font-bold">Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

@@ -1,99 +1,59 @@
-"use client";
-
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function HomePage() {
-  const router = useRouter();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [showGuide, setShowGuide] = useState(false);
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    };
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      // اگر براؤزر کا اپنا پرامپٹ تیار ہے تو فوراً ونڈو اوپن کر دے گا
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === "accepted") {
-        console.log("User accepted the install prompt");
-      }
-      setDeferredPrompt(null);
-    } else {
-      // اگر پرامپٹ ابھی کیچ نہیں ہوا تو اسکرین پر آسان گائیڈ شو کر دے گا
-      setShowGuide(true);
-    }
-  };
-
   return (
-    <div className="flex h-dvh w-screen items-center justify-center bg-slate-900 text-white font-sans px-4 relative">
-      <div className="text-center space-y-6 max-w-md w-full bg-slate-800/50 p-8 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-md">
+    <div className="min-h-screen bg-[#d9e1f3] flex items-center justify-center p-4 dir-rtl">
+      <div className="bg-[#111827] border border-gray-800 p-8 rounded-2xl shadow-xl w-full max-w-md text-center space-y-6">
         
-        {/* College Title */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
+        {/* ہیڈر */}
+        <div>
+          <h1 className="text-xl font-bold text-white">
             Pak Paramedical College, Chiniot
           </h1>
-          <p className="text-xs text-slate-400">
-            Pharmacy Teacher - AI Learning Portal
-          </p>
+          <p className="text-xs text-gray-400 mt-1">Pharmacy Teacher - AI Learning Portal</p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-col gap-3 pt-2">
-          
-          {/* 1. Login Portal Button */}
-          <button
-            onClick={() => router.push("/login")}
-            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl transition duration-200 shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 text-sm"
+        {/* لاگ ان اور دوسرے بٹنز */}
+        <div className="space-y-3">
+          <Link
+            href="/login?part=1"
+            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition text-sm shadow"
           >
-            🚀 Login Portal
-          </button>
+            🚀 B-Pharmacy Part 1 Login
+          </Link>
 
-          {/* 2. Install App Button */}
-          <button
-            onClick={handleInstallClick}
-            className="w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold rounded-xl transition duration-200 border border-slate-600 flex items-center justify-center gap-2 text-sm"
+          <Link
+            href="/login?part=2"
+            className="w-full flex items-center justify-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition text-sm shadow"
           >
+            🚀 B-Pharmacy Part 2 Login
+          </Link>
+
+          <button className="w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-3 rounded-xl transition text-sm">
             💻 Install App
           </button>
 
+          {/* نیا ایڈمن لاگ ان بٹن */}
+          <Link
+            href="/admin"
+            className="w-full flex items-center justify-center bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-xl transition text-sm shadow"
+          >
+            🔐 Admin Login Panel
+          </Link>
         </div>
 
-        <div className="text-[10px] text-slate-500 pt-2">
-          Powered by SM Tech AI Solutions
+       <div className="text-xs font-bold text-gray-400 tracking-wider pt-3 border-t border-gray-800/60">
+          Powered by 
+          <a 
+            href="https://www.smtechaisolutions.com" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 font-extrabold ml-1 transition-colors"
+          >
+            SM Tech AI Solutions
+          </a>
         </div>
-
       </div>
-
-      {/* Instant Guide Modal if direct prompt isn't ready */}
-      {showGuide && (
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl text-center">
-            <h3 className="text-lg font-bold text-blue-400">App Installation</h3>
-            <p className="text-xs text-slate-300 leading-relaxed">
-              براؤزر کی سیکیورٹی پالیسی کی وجہ سے ایک کلک پر انسٹالیشن کے لیے براہ کرم کروم کے اوپر دائیں کونے والے مینو (<span className="text-yellow-400 font-bold">⋮</span>) پر کلک کریں اور <span className="text-green-400 font-bold">"Install Pharmacy Teacher"</span> پر کلک کریں۔
-            </p>
-            <button
-              onClick={() => setShowGuide(false)}
-              className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition"
-            >
-              ٹھیک ہے (Got it)
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

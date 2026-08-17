@@ -13,12 +13,16 @@ export default function AdminDashboard() {
   // Tab State: 'students' | 'upload' | 'teacher'
   const [activeTab, setActiveTab] = useState<"students" | "upload" | "teacher">("students");
 
-  // Form States
+  // Form States for Students
   const [rollNumber, setRollNumber] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
-  const [subject, setSubject] = useState("Pharmaceutics");
+  const [studentPart, setStudentPart] = useState("1"); // Part 1 ya Part 2
+
+  // Form States for Books
+  const [subject, setSubject] = useState("");
   const [chapter, setChapter] = useState("");
+  const [bookPart, setBookPart] = useState("1"); // Part 1 ya Part 2
   const [file, setFile] = useState<File | null>(null);
 
   const [studentMsg, setStudentMsg] = useState("");
@@ -49,7 +53,7 @@ export default function AdminDashboard() {
       const res = await fetch("/api/create-student", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rollNumber, name, password }),
+        body: JSON.stringify({ rollNumber, name, password, part: studentPart }),
       });
 
       const data = await res.json();
@@ -58,6 +62,7 @@ export default function AdminDashboard() {
         setRollNumber("");
         setName("");
         setPassword("");
+        setStudentPart("1");
       } else {
         setStudentMsg("❌ " + (data.error || "رجسٹریشن میں ناکامی"));
       }
@@ -71,8 +76,8 @@ export default function AdminDashboard() {
   // 2. Upload Word (.docx) Book Logic
   const handleUploadBook = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file || !chapter) {
-      setUploadMsg("❌ فائل اور کتاب کا عنوان درج کریں");
+    if (!file || !chapter || !subject) {
+      setUploadMsg("❌ مضمون، کتاب کا عنوان اور فائل درج کریں");
       return;
     }
 
@@ -82,7 +87,8 @@ export default function AdminDashboard() {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("subject", subject);
-    formData.append("title", chapter); // API کی فیلڈ title کے مطابق تنظیم
+    formData.append("title", chapter);
+    formData.append("part", bookPart); // Part 1 ya Part 2 API ko bhejna
 
     try {
       const res = await fetch("/api/upload-book", {
@@ -93,8 +99,10 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (res.ok) {
         setUploadMsg("✅ " + data.message);
+        setSubject("");
         setChapter("");
         setFile(null);
+        setBookPart("1");
       } else {
         setUploadMsg("❌ " + (data.error || "کتاب اپلوڈ کرنے میں ناکامی"));
       }
@@ -122,7 +130,7 @@ export default function AdminDashboard() {
               </label>
               <input
                 type="password"
-                placeholder="پاس ورڈ درج کریں"
+                placeholder=""
                 value={adminPasswordInput}
                 onChange={(e) => setAdminPasswordInput(e.target.value)}
                 className="w-full p-3 text-sm border rounded-xl bg-gray-50 outline-none focus:ring-2 focus:ring-blue-600"
@@ -213,7 +221,7 @@ export default function AdminDashboard() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. BP-2026-001"
+                  placeholder=""
                   value={rollNumber}
                   onChange={(e) => setRollNumber(e.target.value)}
                   className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
@@ -227,7 +235,7 @@ export default function AdminDashboard() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Muhammad Ali"
+                  placeholder=""
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
@@ -241,12 +249,27 @@ export default function AdminDashboard() {
                 </label>
                 <input
                   type="text"
-                  placeholder="پاس ورڈ درج کریں"
+                  placeholder=""
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+              </div>
+
+              {/* Part Selection for Student */}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">
+                  کلاس پارٹ (Class Part)
+                </label>
+                <select
+                  value={studentPart}
+                  onChange={(e) => setStudentPart(e.target.value)}
+                  className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="1">Part 1 (فرسٹ پارٹ)</option>
+                  <option value="2">Part 2 (سیکنڈ پارٹ)</option>
+                </select>
               </div>
 
               <button
@@ -275,17 +298,14 @@ export default function AdminDashboard() {
                 <label className="text-xs font-semibold text-gray-600 block mb-1">
                   مضمون (Subject)
                 </label>
-                <select
+                <input
+                  type="text"
+                  placeholder="مضمون کا نام درج کریں، مثلاً: Pharmacology"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                   className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Pharmaceutics">Pharmaceutics (فارماسیوٹکس)</option>
-                  <option value="Anatomy and Physiology">Anatomy & Physiology (اناٹمی)</option>
-                  <option value="Microbiology">Microbiology (مائیکرو بائیولوجی)</option>
-                  <option value="Biochemistry">Biochemistry (بائیو کیمسٹری)</option>
-                 
-                </select>
+                  required
+                />
               </div>
 
               <div>
@@ -294,12 +314,27 @@ export default function AdminDashboard() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Pharmaceutics-I Official Textbook (Category-B)"
+                  placeholder="مثلاً: Pharmaceutics-I Chapter 1"
                   value={chapter}
                   onChange={(e) => setChapter(e.target.value)}
                   className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 />
+              </div>
+
+              {/* Part Selection for Book */}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 block mb-1">
+                  کتاب کا پارٹ (Book Part)
+                </label>
+                <select
+                  value={bookPart}
+                  onChange={(e) => setBookPart(e.target.value)}
+                  className="w-full p-2.5 text-xs border rounded-lg bg-gray-50 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="1">Part 1 (فرسٹ ایئر/پارٹ)</option>
+                  <option value="2">Part 2 (سیکنڈ ایئر/پارٹ)</option>
+                </select>
               </div>
 
               <div>

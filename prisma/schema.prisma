@@ -20,6 +20,7 @@ model Student {
   rollNumber String   @unique
   password   String
   name       String
+  part       String   @default("1") // "1" یا "2" (یہ بتائے گا کہ طالب علم کون سے پارٹ میں ہے)
   chats      Chat[]
   createdAt  DateTime @default(now())
 }
@@ -51,7 +52,8 @@ model Book {
   id        String   @id @default(cuid())
   title     String
   subject   String?
-  content   String   @db.Text   // بڑی کتب کا ٹیکسٹ محفوظ کرنے کے لیے Text ٹائپ
+  part      String   @default("1") // "1" (Part 1 کے لیے) یا "2" (Part 2 کے لیے)
+  content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

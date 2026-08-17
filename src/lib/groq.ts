@@ -1,12 +1,12 @@
 // src/lib/groq.ts
 
 if (!process.env.GROQ_API_KEY) {
-  throw new Error("GROQ_API_KEY انوائرنمنٹ فائل (.env) میں موجود نہیں ہے۔");
+  throw new Error("GROQ_API_KEY ماحول فائل (.env) میں موجود نہیں ہے۔");
 }
 
 export async function askGroq(
   messages: { role: string; content: string }[],
-  model = "llama-3.3-70b-versatile"
+  model = "openai/gpt-oss-20b" // یہاں وہ ماڈل رکھیں جو 100% فعال ہو
 ) {
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
