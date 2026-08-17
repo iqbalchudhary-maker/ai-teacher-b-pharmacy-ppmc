@@ -76,7 +76,7 @@ export default function LoginPage() {
             <input
               type="text"
               required
-              placeholder="e.g., BP-2026-001"
+              placeholder=""
               value={rollNumber}
               onChange={(e) => setRollNumber(e.target.value)}
               className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 text-slate-900"
@@ -88,7 +88,7 @@ export default function LoginPage() {
             <input
               type="password"
               required
-              placeholder="••••••••"
+              placeholder=""
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-xl border border-slate-300 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 bg-slate-50 text-slate-900"
